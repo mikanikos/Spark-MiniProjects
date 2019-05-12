@@ -1,6 +1,9 @@
 package cubeoperator
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.parser.SqlBaseParser.SetQuantifierContext
+import org.dmg.pmml.True
 
 class CubeOperator(reducers: Int) {
 
@@ -28,33 +31,57 @@ class CubeOperator(reducers: Int) {
   }
 
   def cube_naive(dataset: Dataset, groupingAttributes: List[String], aggAttribute: String, agg: String): RDD[(String, Double)] = {
-
     val rdd = dataset.getRDD()
     val schema = dataset.getSchema()
 
     val index = groupingAttributes.map(x => schema.indexOf(x))
     val indexAgg = schema.indexOf(aggAttribute)
+    // Extract column type from schema to cast as correct Numeric type
+    val typeName = rdd.first().schema.fields(indexAgg).dataType.typeName
 
-    // Create lattice space as List[List[Int]] - each List[Int] is a configuration of inputs
+    // Create lattice space C mentioned in literature
     val lattice = index.toSet.subsets().map(x=>x.toList).toList
 
-    // Map function - transform tuple t into (k,t) pair, where k is the grouping key
-    // Function: Row => List[(List[Any], Row)]
-    val mapPhase = {
-      (t: org.apache.spark.sql.Row) => lattice.map(x => (x.map(i => t(i)), t))
-    }
-    // Reduce function - transform a (k, [values]) pair into aggregation
-    // Function: (k, Row) => (String, Double)
-    // TODO: Extend this for other aggregation operations and column types
-    // TODO: Modify output String with * for 'all columns'
-    val reducePhase = {
-      (t: (List[Any], scala.Iterable[(List[Any], org.apache.spark.sql.Row)])) =>
-      (t._1.mkString(","),t._2.map(x=>x._2(indexAgg).asInstanceOf[Int].toDouble).sum)
+    // Casts numeric data types into their respective type for aggregation
+    val cast = (x: Any) => typeName match {
+      case "integer" => x.asInstanceOf[Int] // Infers further cast Int->Double
+      case "double" => x.asInstanceOf[Double]
+      case _ => Double.NaN
     }
 
+    // Define measure function M referenced in literature
+    // TODO: Compute average efficiently (one pass)
+    val aggf = (ls: Iterable[Any]) =>
+    {
+      agg match {
+        case "COUNT" => ls.size.asInstanceOf[Double]
+        case "SUM" => ls.map(cast).sum
+        case "MIN" => ls.map(cast).min
+        case "MAX" => ls.map(cast).max
+        case "AVG" => ls.map(cast).sum/ls.size.asInstanceOf[Double]
+        case _ => throw new IllegalArgumentException(agg + " is not a valid aggregation function")
+      }
+    }
+
+    // Helper function to construct the name of the result
+    val makeName = {
+      (ks: Map[Int,Any]) => index.map(i=>if(ks.contains(i)) ks(i).toString else '*').mkString(",")
+    }
+
+    // Map function - transform tuple t into (k,t(i)) pairs, where k is key, t(i) is aggregation column
+    val mapPhase = {
+      (t: Row) => lattice.map(x => (x.map(i => (i,t(i))).toMap, t(indexAgg)))
+    }
+
+    // Reduce function - transform a (k, [values]) pair into (k, M([values]))
+    val reducePhase = {
+      (t: (Map[Int, Any], Iterable[Any])) =>
+      (makeName(t._1),aggf(t._2))
+    }
+
+    // Map -> Sort/Shuffle -> Reduce
     rdd.flatMap(mapPhase)
-      .groupBy(k=>k._1)
+      .groupByKey()
       .map(reducePhase)
   }
-
 }
