@@ -31,7 +31,7 @@ class CubeOperator(reducers: Int) {
       case _ => Double.NaN
     }
 
-    // Aggregation function on (count, sum) tuple
+    // Aggregation function on (sum, count) tuple
     val aggf = (ds: (Double, Double)) =>
     {
       agg match {
@@ -57,8 +57,9 @@ class CubeOperator(reducers: Int) {
 
     // Combines within partition: Iterator[(k, v)] => Iterator[(k, v)] with like keys combined
     val combine = (t: Iterator[(Map[Int, Any], (Double ,Double))]) => {
+      // Construct HashMap and populate so that like keys within partition are combined
       val m = scala.collection.mutable.HashMap[Map[Int,Any], (Double, Double)]().withDefaultValue(
-        agg match {
+        agg match { // Specify correct default values based upon aggregation function
           case "MIN" => (Double.MaxValue,0.0)
           case "MAX" => (Double.MinValue,0.0)
           case _ => (0.0,0.0)
@@ -72,7 +73,7 @@ class CubeOperator(reducers: Int) {
           case _ => (ds._1+rval._1,ds._2+rval._2)
         }
       })
-      m.iterator
+      m.iterator // Return Map.Iterator as Iterator through combined (k, v) pairs
     }
     // Encapsulate map and mapper-side combine into single mapper function
     val mapCombine = (x: Iterator[Row]) => combine(mapPhase(x))
@@ -102,16 +103,13 @@ class CubeOperator(reducers: Int) {
   }
 
   def cube_naive(dataset: Dataset, groupingAttributes: List[String], aggAttribute: String, agg: String): RDD[(String, Double)] = {
+
+    // Get arguments, types, indices, etc.
     val rdd = dataset.getRDD()
     val schema = dataset.getSchema()
-
     val index = groupingAttributes.map(x => schema.indexOf(x))
     val indexAgg = schema.indexOf(aggAttribute)
-    // Extract column type from schema to cast as correct Numeric type
     val typeName = rdd.first().schema.fields(indexAgg).dataType.typeName
-
-    // Create lattice space C mentioned in literature
-    val lattice = index.toSet.subsets().map(x=>x.toList).toList
 
     // Casts numeric data types into their respective type for aggregation
     val cast = (x: Any) => typeName match {
@@ -120,7 +118,7 @@ class CubeOperator(reducers: Int) {
       case _ => Double.NaN
     }
 
-    // Define measure function M referenced in literature
+    // Aggregation function on (sum, count) tuple
     val aggf = (ds: (Double, Double)) =>
     {
       agg match {
@@ -135,9 +133,12 @@ class CubeOperator(reducers: Int) {
       (ks: Map[Int,Any]) => index.map(i=>if(ks.contains(i)) ks(i).toString else '*').mkString(",")
     }
 
+    // Instantiate lattice for combinatoric loops
+    val lattice = index.toSet.subsets().map(x=>x.toList).toList
+
     // Map function - transform tuple t into (k,t(i)) pairs, where k is key, t(i) is aggregation column
     val mapPhase = {
-      (t: Row) => lattice.map(x => (x.map(i => (i,t(i))).toMap, ((cast(t(indexAgg))), 1.0)))
+      (t: Row) => lattice.map(x => (x.map(i => (i,t(i))).toMap, (cast(t(indexAgg)), 1.0)))
     }
 
     // Reduce function - transforms a (k, [values]) pair into (k, M([values])) by pairwise operation on values
@@ -149,7 +150,6 @@ class CubeOperator(reducers: Int) {
       }
     }
 
-    // Map -> Sort/Shuffle -> Reduce -> Format Output
     rdd.flatMap(mapPhase) // Map phase
       .reduceByKey(reducePhase, reducers) // Reduce phase
       .map(x => (makeName(x._1), aggf(x._2)))  // Canonicalize result as [(String, Double)]
