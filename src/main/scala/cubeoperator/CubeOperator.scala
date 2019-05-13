@@ -17,12 +17,11 @@ class CubeOperator(reducers: Int) {
  * */
   def cube(dataset: Dataset, groupingAttributes: List[String], aggAttribute: String, agg: String): RDD[(String, Double)] = {
 
+    // Get arguments, types, indices, etc.
     val rdd = dataset.getRDD()
     val schema = dataset.getSchema()
-
     val index = groupingAttributes.map(x => schema.indexOf(x))
     val indexAgg = schema.indexOf(aggAttribute)
-
     val typeName = rdd.first().schema.fields(indexAgg).dataType.typeName
 
     // Casts numeric data types into their respective type for aggregation
@@ -32,6 +31,7 @@ class CubeOperator(reducers: Int) {
       case _ => Double.NaN
     }
 
+    // Aggregation function on (count, sum) tuple
     val aggf = (ds: (Double, Double)) =>
     {
       agg match {
@@ -46,20 +46,31 @@ class CubeOperator(reducers: Int) {
       (ks: Map[Int,Any]) => index.map(i=>if(ks.contains(i)) ks(i).toString else '*').mkString(",")
     }
 
-    // Create lattice space C mentioned in literature
+    // Instantiate lattice for combinatoric loops
     val lattice = index.toSet.subsets().map(x=>x.toList).toList
 
+    // Constructs key from tuple, used in initial map phase
     val getKey = (r: Row) => index.map(i => (i, r(i))).toMap
 
     // Maps Iterator[Row] => Iterator[(k, v)] where k is grouping values and v is (sum, count)
     val mapPhase = (x: Iterator[Row]) => x.map(r => (getKey(r), (cast(r(indexAgg)), 1.0)))
+
     // Combines within partition: Iterator[(k, v)] => Iterator[(k, v)] with like keys combined
     val combine = (t: Iterator[(Map[Int, Any], (Double ,Double))]) => {
-      val m = scala.collection.mutable.HashMap[Map[Int,Any], (Double, Double)]().withDefaultValue((0.0,0.0))
+      val m = scala.collection.mutable.HashMap[Map[Int,Any], (Double, Double)]().withDefaultValue(
+        agg match {
+          case "MIN" => (Double.MaxValue,0.0)
+          case "MAX" => (Double.MinValue,0.0)
+          case _ => (0.0,0.0)
+        })
       t.foreach(r => {
-        val ds = m(r._1)
-        val rval = r._2
-        m(r._1) = (ds._1+rval._1,ds._2+rval._2)
+        val ds = m(r._1) // Take current (or default) value from Map
+        val rval = r._2  // Take the value of this tuple
+        m(r._1) = agg match { // Put in the Map the partially aggregated values
+          case "MIN" => (Math.min(ds._1,rval._1),0.0)
+          case "MAX" => (Math.max(ds._1,rval._1),0.0)
+          case _ => (ds._1+rval._1,ds._2+rval._2)
+        }
       })
       m.iterator
     }
@@ -67,23 +78,27 @@ class CubeOperator(reducers: Int) {
     val mapCombine = (x: Iterator[Row]) => combine(mapPhase(x))
 
     // Reduce function - transforms a (k, [values]) pair into (k, M[values]) by pairwise operation on values
-    val reducePhase = {
-      (ds1 : (Double, Double), ds2: (Double, Double)) => (ds1._1+ds2._1, ds1._2+ds2._2)
+    val reducePhase = (d1: (Double, Double), d2: (Double, Double)) => {
+      agg match {
+        case "MIN" => (Math.min(d1._1, d2._1), 0.0)
+        case "MAX" => (Math.max(d1._1, d2._1), 0.0)
+        case _ => (d1._1+d2._1, d1._2+d2._2)
+      }
     }
 
-    // Expands the from a bottom lattice (k, v) pair the partial results above
+    // Expands from bottom lattice key partial results
     val expandLattice = (t: (Map[Int,Any], (Double, Double))) => {
-      lattice.map(lx => {
+      lattice.map(lx => { // For each lattice configuration, create a new key from the full key
         (t._1.filterKeys(lx.contains).toArray.toMap, t._2)
       })
     }
 
-    rdd.mapPartitions(mapCombine) // Map phase
-      .reduceByKey(reducePhase) // Reduce phase
+    rdd.mapPartitions(mapCombine) // Map phase and mapper side combine
+      .reduceByKey(reducePhase,reducers) // Reduce phase
       .flatMap(expandLattice) // Expand lattice
       .mapPartitions(combine) // Expanded map/combine
-      .reduceByKey(reducePhase) // Expanded reduction
-      .map(x => (makeName(x._1), aggf(x._2)))
+      .reduceByKey(reducePhase,reducers) // Expanded reduction
+      .map(x => (makeName(x._1), aggf(x._2))) // Canonicalize result as [(String, Double)]
   }
 
   def cube_naive(dataset: Dataset, groupingAttributes: List[String], aggAttribute: String, agg: String): RDD[(String, Double)] = {
@@ -135,8 +150,8 @@ class CubeOperator(reducers: Int) {
     }
 
     // Map -> Sort/Shuffle -> Reduce -> Format Output
-    rdd.flatMap(mapPhase)
-      .reduceByKey(reducePhase)
-      .map(x => (makeName(x._1), aggf(x._2)))
+    rdd.flatMap(mapPhase) // Map phase
+      .reduceByKey(reducePhase, reducers) // Reduce phase
+      .map(x => (makeName(x._1), aggf(x._2)))  // Canonicalize result as [(String, Double)]
   }
 }

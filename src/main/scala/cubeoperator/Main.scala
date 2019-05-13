@@ -34,7 +34,7 @@ object Main {
 
     var groupingList = List("lo_suppkey","lo_shipmode","lo_orderdate")
 
-    val res = cb.cube(dataset, groupingList, "lo_supplycost", "AVG")
+    val res = cb.cube(dataset, groupingList, "lo_supplycost", "MAX")
 
     res.sortBy(x=>x._1)foreach(x=>println(x))
 
@@ -48,7 +48,7 @@ object Main {
 
     //Perform the same query using SparkSQL
         val q1 = df.cube("lo_suppkey","lo_shipmode","lo_orderdate")
-          .agg(avg("lo_supplycost") as "sum supplycost")
+          .agg(max("lo_supplycost") as "sum supplycost")
       .foreach(x=>println(x))
   }
 }
