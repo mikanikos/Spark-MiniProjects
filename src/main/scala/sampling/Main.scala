@@ -19,7 +19,7 @@ object Main {
 
     val table = session.createDataFrame(rdd2, StructType(
       StructField("A1", DoubleType, false) ::
-      StructField("A2", IntegerType, false) ::
+      StructField("A2", DoubleType, false) ::
       Nil
     ))
 

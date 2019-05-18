@@ -56,6 +56,7 @@ object Sampler {
       }
     })
     // Return list of RDDS, plus a Map of (QCS : Map(QCS:Index)) pairs
+    // Each RDD entry is of type (Row, Double), where the double represents the 'scaling' of the sample
     (samples.toList, indices.toMap)
   }
 
