@@ -8,7 +8,7 @@ import java.io._
 
 object Main {
   def main(args: Array[String]) {
-    val reducers = 10
+    val reducers = 1
 
     val inputFile= "../lineorder_small.tbl"
     val input = new File(getClass.getResource(inputFile).getFile).getPath
@@ -34,13 +34,12 @@ object Main {
 
     var groupingList = List("lo_suppkey","lo_shipmode","lo_orderdate")
 
-    val res = cb.cube(dataset, groupingList, "lo_supplycost", "AVG")
+    val res = cb.cube(dataset, groupingList, "lo_supplycost", "COUNT")
 
-    res.sortBy(x=>x._1)foreach(x=>println(x))
+    res.foreach(println)
 
-    val res2 = cb.cube_naive(dataset, groupingList, "lo_supplycost", "AVG")
 
-    res2.sortBy(x=>x._1)foreach(x=>println(x))
+
 
     /*
        The above call corresponds to the query:
@@ -53,6 +52,6 @@ object Main {
     //Perform the same query using SparkSQL
         val q1 = df.cube("lo_suppkey","lo_shipmode","lo_orderdate")
           .agg(avg("lo_supplycost") as "sum supplycost")
-      .foreach(x=>println(x))
+        q1.show(20)
   }
 }
