@@ -20,14 +20,14 @@ object Executor {
 
   def execute_Q1(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
-    query_executor(session, params, "1.sql")
+    query_executor(session, params, "1.sql").rdd
   }
 
   def execute_Q3(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
     desc.orders.createOrReplaceTempView("orders")
     desc.customer.createOrReplaceTempView("customer")
-    query_executor(session, params, "3.sql")
+    query_executor(session, params, "3.sql").rdd
   }
 
   def execute_Q5(desc: Description, session: SparkSession, params: List[Any]) = {
@@ -37,12 +37,12 @@ object Executor {
     desc.supplier.createOrReplaceTempView("supplier")
     desc.nation.createOrReplaceTempView("nation")
     desc.region.createOrReplaceTempView("region")
-    query_executor(session, params, "5.sql")
+    query_executor(session, params, "5.sql").rdd
   }
 
   def execute_Q6(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
-    query_executor(session, params, "6.sql")
+    query_executor(session, params, "6.sql").rdd
   }
 
   def execute_Q7(desc: Description, session: SparkSession, params: List[Any]) = {
@@ -52,7 +52,7 @@ object Executor {
     desc.supplier.createOrReplaceTempView("supplier")
     desc.nation.createOrReplaceTempView("nation")
     query_executor(session, params, "7_view.sql").createOrReplaceTempView("shipping")
-    query_executor(session, List(), "7.sql")
+    query_executor(session, List(), "7.sql").rdd
   }
 
   def execute_Q9(desc: Description, session: SparkSession, params: List[Any]) = {
@@ -63,7 +63,7 @@ object Executor {
     desc.nation.createOrReplaceTempView("nation")
     desc.partsupp.createOrReplaceTempView("partsupp")
     query_executor(session, params, "9_view.sql").createOrReplaceTempView("profit")
-    query_executor(session, List(), "9.sql")
+    query_executor(session, List(), "9.sql").rdd
 
   }
 
@@ -72,39 +72,39 @@ object Executor {
     desc.orders.createOrReplaceTempView("orders")
     desc.customer.createOrReplaceTempView("customer")
     desc.nation.createOrReplaceTempView("nation")
-    query_executor(session, params, "10.sql")
+    query_executor(session, params, "10.sql").rdd
   }
 
   def execute_Q11(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.supplier.createOrReplaceTempView("supplier")
     desc.nation.createOrReplaceTempView("nation")
     desc.partsupp.createOrReplaceTempView("partsupp")
-    query_executor(session, params, "11.sql")
+    query_executor(session, params, "11.sql").rdd
   }
 
   def execute_Q12(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
     desc.orders.createOrReplaceTempView("orders")
-    query_executor(session, params, "12.sql")
+    query_executor(session, params, "12.sql").rdd
   }
 
   def execute_Q17(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
     desc.part.createOrReplaceTempView("part")
-    query_executor(session, params, "17.sql")
+    query_executor(session, params, "17.sql").rdd
   }
 
   def execute_Q18(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
     desc.orders.createOrReplaceTempView("orders")
     desc.customer.createOrReplaceTempView("customer")
-    query_executor(session, params, "18.sql")
+    query_executor(session, params, "18.sql").rdd
   }
 
   def execute_Q19(desc: Description, session: SparkSession, params: List[Any]) = {
     desc.lineitem.createOrReplaceTempView("lineitem")
     desc.part.createOrReplaceTempView("part")
-    query_executor(session, params, "19.sql")
+    query_executor(session, params, "19.sql").rdd
   }
 
   def execute_Q20(desc: Description, session: SparkSession, params: List[Any]) = {
@@ -113,6 +113,6 @@ object Executor {
     desc.nation.createOrReplaceTempView("nation")
     desc.partsupp.createOrReplaceTempView("partsupp")
     desc.part.createOrReplaceTempView("part")
-    query_executor(session, params, "20.sql")
+    query_executor(session, params, "20.sql").rdd
   }
 }

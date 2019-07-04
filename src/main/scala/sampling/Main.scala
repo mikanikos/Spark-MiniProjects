@@ -28,26 +28,28 @@ object Main {
     desc.e = 0.1
     desc.ci = 0.95
 
-//
-//    val tmp = Sampler.sample(desc.lineitem, 1000000, desc.e, desc.ci)
-//    desc.samples = tmp._1
-//    desc.sampleDescription = tmp._2
-//
-//    // check storage usage for samples
-//
-//    // Execute first query
-//    Executor.execute_Q1(desc, session, List("3"))
 
-    val path = "src/main/resources/tpch_parquet_sf1/"
+    val tmp = Sampler.sample(desc.lineitem, 1000000, desc.e, desc.ci)
+    desc.samples = tmp._1
+    desc.sampleDescription = tmp._2
 
-    desc.lineitem = session.read.parquet(path + "lineitem.parquet")
-    desc.customer = session.read.parquet(path + "customer.parquet")
-    desc.orders = session.read.parquet(path + "order.parquet")
-    desc.supplier = session.read.parquet(path + "supplier.parquet")
-    desc.nation = session.read.parquet(path + "nation.parquet")
-    desc.region = session.read.parquet(path + "region.parquet")
-    desc.part = session.read.parquet(path + "part.parquet")
-    desc.partsupp = session.read.parquet(path + "partsupp.parquet")
+    // check storage usage for samples
+
+    // Execute first query
+    Executor.execute_Q1(desc, session, List("3"))
+
+
+    // LOAD TABLES
+//    val path = "src/main/resources/tpch_parquet_sf1/"
+//
+//    desc.lineitem = session.read.parquet(path + "lineitem.parquet")
+//    desc.customer = session.read.parquet(path + "customer.parquet")
+//    desc.orders = session.read.parquet(path + "order.parquet")
+//    desc.supplier = session.read.parquet(path + "supplier.parquet")
+//    desc.nation = session.read.parquet(path + "nation.parquet")
+//    desc.region = session.read.parquet(path + "region.parquet")
+//    desc.part = session.read.parquet(path + "part.parquet")
+//    desc.partsupp = session.read.parquet(path + "partsupp.parquet")
 
 
     // SHOW TABLES

@@ -56,7 +56,7 @@ object Main {
 
     val diff = cartesian_res.distinct().subtract(res)
 
-    println(res.count(), (t2-t1)/(Math.pow(10,9)), cartesian_res.distinct().count(), (t2Cartesian-t1Cartesian)/(Math.pow(10,9)), diff.count())
+    println(resultSize, (t2-t1)/(Math.pow(10,9)), cartesianSize, (t2Cartesian-t1Cartesian)/(Math.pow(10,9)), diff.count())
 
   }
 

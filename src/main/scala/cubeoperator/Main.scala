@@ -50,8 +50,8 @@ object Main {
 
 
     //Perform the same query using SparkSQL
-        val q1 = df.cube("lo_suppkey","lo_shipmode","lo_orderdate")
-          .agg(avg("lo_supplycost") as "sum supplycost")
-        q1.show(20)
+//        val q1 = df.cube("lo_suppkey","lo_shipmode","lo_orderdate")
+//          .agg(avg("lo_supplycost") as "sum supplycost")
+//        q1.show(20)
   }
 }

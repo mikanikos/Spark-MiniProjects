@@ -9,8 +9,6 @@ import scala.util.Random
 
 object Sampler {
 
-  // TODO: Code as global literals that correspond to real query sets and aggregation columns
-  // TODO: If we choose to aggregate on an Integer column, we must change typecasting logic below
   val aggCol = 0 // Index of column we calculate variance from
   val QCSs = List(List(1), List(1)) // Lists of QCS, ranked most to least beneficial
 
@@ -41,7 +39,6 @@ object Sampler {
           val error = (z * Math.sqrt(stratSample._2)) / columnSum // Calculate error within ci
           satisfiesConstraint = error < e
           if (satisfiesConstraint) {
-            // TODO: Update budget in bytes
             val sampleBudget = stratSample._1.count()
             if(budgetUsed+sampleBudget<storageBudgetBytes) {
               budgetUsed += sampleBudget
@@ -49,7 +46,6 @@ object Sampler {
               indices.append((QCS, samples.length))
             }
           } else {
-            // TODO: Implement a more sensible update of k if we didn't meet constraint
             k += (k*(error/e)).toInt
           }
         }
